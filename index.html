@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I Spy Smokey</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+</head>
+
+<body>
+    <div id="game-container">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="loading-screen">
+            <div class="loading-content">
+                <img id="loading-gif" src="assets/loading.gif" alt="Loading..." style="display: none;">
+                <div class="loading-text">Loading Smokey's Adventure...</div>
+                <div class="loading-progress">
+                    <div class="progress-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game UI -->
+        <div id="game-ui" class="game-ui" style="display: none;">
+            <div class="ui-top">
+                <div class="level-info">
+                    <h2 id="level-name">Level 1</h2>
+                    <div class="level-counter">
+                        <span id="current-level">1</span> / <span id="total-levels">5</span>
+                    </div>
+                </div>
+                <div class="timer">
+                    <span id="timer-display">00:00.000</span>
+                </div>
+            </div>
+
+            <div class="instructions">
+                <p>Find Smokey the cat! Click on him to advance to the next level.</p>
+            </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div id="canvas-container" class="canvas-container" style="display: none;">
+            <!-- p5.js canvas will be inserted here -->
+        </div>
+
+        <!-- Development Mode Toggle -->
+        <div id="dev-mode-toggle" class="dev-mode-toggle" style="display: none;">
+            <button id="dev-mode-btn">Dev Mode: OFF</button>
+            <div id="dev-info" class="dev-info" style="display: none;">
+                <p>Mouse Position: <span id="mouse-pos">0, 0</span></p>
+                <p>Image Position: <span id="image-pos">0, 0</span></p>
+                <button id="copy-coords">Copy Coordinates</button>
+            </div>
+        </div>
+
+        <!-- Game Complete Modal -->
+        <div id="game-complete-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>Congratulations!</h2>
+                <p>You found Smokey in all levels!</p>
+                <p>Your time: <span id="final-time">00:00.000</span></p>
+
+                <div class="name-input">
+                    <label for="player-name">Enter your name:</label>
+                    <input type="text" id="player-name" placeholder="Your name" maxlength="20">
+                    <button id="save-score">Save Score</button>
+                </div>
+
+                <div class="leaderboard-section">
+                    <h3>Top 5 Players</h3>
+                    <div id="leaderboard-list"></div>
+                </div>
+
+                <div class="modal-buttons">
+                    <button id="play-again">Play Again</button>
+                    <button id="close-modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/leaderboard.js"></script>
+    <script src="js/level.js"></script>
+    <script src="js/devMode.js"></script>
+    <script src="js/game.js"></script>
+</body>
+
+</html>
