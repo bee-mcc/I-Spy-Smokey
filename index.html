@@ -15,7 +15,7 @@
         <div id="loading-screen" class="loading-screen">
             <div class="loading-content">
                 <img id="loading-gif" src="assets/loading.gif" alt="Loading..." style="display: none;">
-                <div class="loading-text">Loading Smokey's Adventure...</div>
+                <div class="loading-text">🎮 Loading Smokey's Adventure... 🐱</div>
                 <div class="loading-progress">
                     <div class="progress-bar"></div>
                 </div>
@@ -32,12 +32,23 @@
                     </div>
                 </div>
                 <div class="timer">
-                    <span id="timer-display">00:00.000</span>
+                    <div class="timer-row">
+                        <span>Time: </span>
+                        <span id="timer-display">00:00.000</span>
+                    </div>
+                    <div class="timer-row penalty">
+                        <span>Penalty: </span>
+                        <span id="penalty-display">+00:00.000</span>
+                    </div>
+                    <div class="timer-row total">
+                        <span>Total: </span>
+                        <span id="total-time-display">00:00.000</span>
+                    </div>
                 </div>
             </div>
 
             <div class="instructions">
-                <p>Find Smokey the cat! Click on him to advance to the next level.</p>
+                <p>🔍 Find Smokey the cat! 🐱 Click on him to advance to the next level! ⭐</p>
             </div>
         </div>
 
@@ -46,22 +57,19 @@
             <!-- p5.js canvas will be inserted here -->
         </div>
 
-        <!-- Development Mode Toggle -->
-        <div id="dev-mode-toggle" class="dev-mode-toggle" style="display: none;">
-            <button id="dev-mode-btn">Dev Mode: OFF</button>
-            <div id="dev-info" class="dev-info" style="display: none;">
-                <p>Mouse Position: <span id="mouse-pos">0, 0</span></p>
-                <p>Image Position: <span id="image-pos">0, 0</span></p>
-                <button id="copy-coords">Copy Coordinates</button>
-            </div>
-        </div>
+
 
         <!-- Game Complete Modal -->
         <div id="game-complete-modal" class="modal" style="display: none;">
             <div class="modal-content">
-                <h2>Congratulations!</h2>
-                <p>You found Smokey in all levels!</p>
-                <p>Your time: <span id="final-time">00:00.000</span></p>
+                <h2>🎉 Congratulations! 🎉</h2>
+                <p>You found Smokey in all levels! 🐱✨</p>
+                <div class="score-breakdown">
+                    <p>Base time: <span id="base-time">00:00.000</span></p>
+                    <p>Penalties: <span id="penalty-time">+00:00.000</span></p>
+                    <p class="total-score">Total time: <span id="final-time">00:00.000</span></p>
+                    <p class="accuracy">Accuracy: <span id="accuracy">100%</span></p>
+                </div>
 
                 <div class="name-input">
                     <label for="player-name">Enter your name:</label>
@@ -85,7 +93,6 @@
     <!-- Scripts -->
     <script src="js/leaderboard.js"></script>
     <script src="js/level.js"></script>
-    <script src="js/devMode.js"></script>
     <script src="js/game.js"></script>
 </body>
 

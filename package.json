@@ -1,0 +1,35 @@
+{
+    "name": "i-spy-smokey",
+    "version": "2.0.0",
+    "description": "A fun I-Spy game where you find Smokey the cat in different scenes, with mobile touch controls, penalty scoring, and visual effects.",
+    "main": "index.html",
+    "scripts": {
+        "start": "http-server -p 3000 -c-1",
+        "editor": "http-server -p 3001 -c-1 -o editor.html",
+        "dev": "npm run start",
+        "build": "echo 'No build process needed for static files'",
+        "test": "echo 'No tests specified'"
+    },
+    "keywords": [
+        "game",
+        "i-spy",
+        "puzzle",
+        "mobile",
+        "touch",
+        "p5js",
+        "javascript"
+    ],
+    "author": "Your Name",
+    "license": "MIT",
+    "devDependencies": {
+        "http-server": "^14.1.1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/i-spy-smokey.git"
+    },
+    "bugs": {
+        "url": "https://github.com/yourusername/i-spy-smokey/issues"
+    },
+    "homepage": "https://github.com/yourusername/i-spy-smokey#readme"
+}

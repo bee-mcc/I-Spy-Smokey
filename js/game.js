@@ -1,7 +1,6 @@
 // Global game variables
 let game;
 let leaderboard;
-let devMode;
 
 // p5.js setup
 function setup() {
@@ -12,8 +11,6 @@ function setup() {
 
     // Initialize game components
     leaderboard = new Leaderboard();
-    devMode = new DevMode();
-    devMode.init();
 
     // Initialize game
     game = new Game();
@@ -27,19 +24,52 @@ function draw() {
     if (game) {
         game.update();
         game.display();
-
-        // Draw dev mode overlay if enabled
-        if (devMode.isEnabled()) {
-            devMode.drawOverlay();
-        }
     }
 }
 
 // p5.js mouse pressed
 function mousePressed() {
     if (game) {
-        game.handleClick(mouseX, mouseY);
+        game.handleMousePressed(mouseX, mouseY);
     }
+}
+
+// p5.js mouse dragged
+function mouseDragged() {
+    if (game) {
+        game.handleMouseDragged(mouseX, mouseY);
+    }
+}
+
+// p5.js mouse released
+function mouseReleased() {
+    if (game) {
+        game.handleMouseReleased(mouseX, mouseY);
+    }
+}
+
+// p5.js touch started
+function touchStarted() {
+    if (game) {
+        game.handleTouchStarted(touches[0].x, touches[0].y);
+    }
+    return false; // Prevent default touch behavior
+}
+
+// p5.js touch moved
+function touchMoved() {
+    if (game) {
+        game.handleTouchMoved(touches[0].x, touches[0].y);
+    }
+    return false; // Prevent default touch behavior
+}
+
+// p5.js touch ended
+function touchEnded() {
+    if (game) {
+        game.handleTouchEnded(touches[0].x, touches[0].y);
+    }
+    return false; // Prevent default touch behavior
 }
 
 // p5.js window resized
@@ -67,6 +97,28 @@ class Game {
         this.timerStarted = false;
         this.canvasWidth = 800;
         this.canvasHeight = 600;
+
+        // Touch and pan controls
+        this.isPanning = false;
+        this.panStartX = 0;
+        this.panStartY = 0;
+        this.panOffsetX = 0;
+        this.panOffsetY = 0;
+        this.longPressTimer = null;
+        this.longPressThreshold = 500; // milliseconds
+        this.isLongPressing = false;
+        this.longPressStartX = 0;
+        this.longPressStartY = 0;
+
+        // Penalty system
+        this.penaltyTime = 0;
+        this.penaltyPerClick = 5000; // 5 seconds per wrong click
+        this.totalClicks = 0;
+        this.correctClicks = 0;
+
+        // Visual effects
+        this.levelTransition = null;
+        this.celebrationEffect = null;
     }
 
     async init() {
@@ -125,11 +177,9 @@ class Game {
     showGameUI() {
         const gameUI = document.getElementById('game-ui');
         const canvasContainer = document.getElementById('canvas-container');
-        const devToggle = document.getElementById('dev-mode-toggle');
 
         if (gameUI) gameUI.style.display = 'block';
         if (canvasContainer) canvasContainer.style.display = 'block';
-        if (devToggle) devToggle.style.display = 'block';
     }
 
     // Show error message
@@ -171,7 +221,6 @@ class Game {
         try {
             await level.loadImage();
             this.currentLevel = level;
-            devMode.updateLevelInfo(level);
             this.updateUI();
         } catch (error) {
             console.error('Error loading level:', error);
@@ -192,9 +241,131 @@ class Game {
         if (this.state === 'playing' && this.currentLevel) {
             this.currentLevel.display();
         }
+
+        // Draw level transition effect
+        if (this.levelTransition) {
+            this.drawLevelTransition();
+        }
+
+        // Draw celebration effect
+        if (this.celebrationEffect) {
+            this.drawCelebrationEffect();
+        }
     }
 
-    // Handle mouse clicks
+    // Handle mouse pressed
+    handleMousePressed(mouseX, mouseY) {
+        if (this.state !== 'playing' || !this.currentLevel) return;
+
+        this.panStartX = mouseX;
+        this.panStartY = mouseY;
+        this.isPanning = false;
+
+        // Start long press timer
+        this.longPressStartX = mouseX;
+        this.longPressStartY = mouseY;
+        this.isLongPressing = false;
+        this.longPressTimer = setTimeout(() => {
+            this.isLongPressing = true;
+            this.handleLongPress(mouseX, mouseY);
+        }, this.longPressThreshold);
+
+
+    }
+
+    // Handle mouse dragged
+    handleMouseDragged(mouseX, mouseY) {
+        if (this.state !== 'playing' || !this.currentLevel) return;
+
+        const deltaX = mouseX - this.panStartX;
+        const deltaY = mouseY - this.panStartY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        // If moved more than 10 pixels, start panning
+        if (distance > 10) {
+            this.isPanning = true;
+            this.cancelLongPress();
+
+            // Update pan offset
+            this.panOffsetX += deltaX;
+            this.panOffsetY += deltaY;
+
+            // Update level pan
+            this.currentLevel.setPanOffset(this.panOffsetX, this.panOffsetY);
+
+            this.panStartX = mouseX;
+            this.panStartY = mouseY;
+        }
+    }
+
+    // Handle mouse released
+    handleMouseReleased(mouseX, mouseY) {
+        if (this.state !== 'playing' || !this.currentLevel) return;
+
+        this.cancelLongPress();
+
+        // If not panning and not long pressing, treat as regular click
+        if (!this.isPanning && !this.isLongPressing) {
+            this.handleClick(mouseX, mouseY);
+        }
+
+        this.isPanning = false;
+    }
+
+    // Handle touch started
+    handleTouchStarted(touchX, touchY) {
+        this.handleMousePressed(touchX, touchY);
+    }
+
+    // Handle touch moved
+    handleTouchMoved(touchX, touchY) {
+        this.handleMouseDragged(touchX, touchY);
+    }
+
+    // Handle touch ended
+    handleTouchEnded(touchX, touchY) {
+        this.handleMouseReleased(touchX, touchY);
+    }
+
+    // Handle long press
+    handleLongPress(mouseX, mouseY) {
+        if (this.state !== 'playing' || !this.currentLevel) return;
+
+        // Start timer on first interaction
+        if (!this.timerStarted) {
+            this.startTime = millis();
+            this.timerStarted = true;
+        }
+
+        // Track total clicks
+        this.totalClicks++;
+
+        // Handle level click
+        const isCorrect = this.currentLevel.handleClick(mouseX, mouseY);
+
+        if (isCorrect) {
+            this.correctClicks++;
+            // Move to next level after a short delay
+            setTimeout(() => {
+                this.nextLevel();
+            }, 1000);
+        } else {
+            // Add penalty for wrong click
+            this.penaltyTime += this.penaltyPerClick;
+            this.showPenaltyNotification();
+        }
+    }
+
+    // Cancel long press timer
+    cancelLongPress() {
+        if (this.longPressTimer) {
+            clearTimeout(this.longPressTimer);
+            this.longPressTimer = null;
+        }
+        this.isLongPressing = false;
+    }
+
+    // Handle regular click (for non-touch devices)
     handleClick(mouseX, mouseY) {
         if (this.state !== 'playing' || !this.currentLevel) return;
 
@@ -204,42 +375,84 @@ class Game {
             this.timerStarted = true;
         }
 
-        // Update dev mode mouse position
-        devMode.updateMousePosition(mouseX, mouseY);
+        // Track total clicks
+        this.totalClicks++;
 
         // Handle level click
         const isCorrect = this.currentLevel.handleClick(mouseX, mouseY);
 
         if (isCorrect) {
+            this.correctClicks++;
             // Move to next level after a short delay
             setTimeout(() => {
                 this.nextLevel();
             }, 1000);
+        } else {
+            // Add penalty for wrong click
+            this.penaltyTime += this.penaltyPerClick;
+            this.showPenaltyNotification();
         }
     }
 
     // Move to next level
     async nextLevel() {
-        this.currentLevelIndex++;
+        // Start level transition effect
+        this.startLevelTransition();
 
-        if (this.currentLevelIndex < this.levels.length) {
-            await this.loadCurrentLevel();
-        } else {
-            this.completeGame();
-        }
+        // Wait for transition to complete
+        setTimeout(async () => {
+            this.currentLevelIndex++;
+
+            if (this.currentLevelIndex < this.levels.length) {
+                await this.loadCurrentLevel();
+                this.endLevelTransition();
+            } else {
+                this.completeGame();
+            }
+        }, 800);
     }
 
     // Complete the game
     completeGame() {
         this.state = 'completed';
-        this.totalTime = this.timer;
+        this.totalTime = this.timer + this.penaltyTime;
+        this.startCelebrationEffect();
         this.showGameCompleteModal();
+    }
+
+    // Show penalty notification
+    showPenaltyNotification() {
+        // Create penalty notification element
+        const notification = document.createElement('div');
+        notification.className = 'penalty-notification';
+        notification.textContent = `+${leaderboard.formatTime(this.penaltyPerClick)} penalty!`;
+
+        // Add to game container
+        const gameContainer = document.getElementById('game-container');
+        gameContainer.appendChild(notification);
+
+        // Animate and remove
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+
+        setTimeout(() => {
+            notification.classList.add('hide');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 2000);
     }
 
     // Show game complete modal
     showGameCompleteModal() {
         const modal = document.getElementById('game-complete-modal');
         const finalTime = document.getElementById('final-time');
+        const baseTime = document.getElementById('base-time');
+        const penaltyTime = document.getElementById('penalty-time');
+        const accuracy = document.getElementById('accuracy');
 
         if (modal) {
             modal.style.display = 'block';
@@ -247,6 +460,19 @@ class Game {
 
         if (finalTime) {
             finalTime.textContent = leaderboard.formatTime(this.totalTime);
+        }
+
+        if (baseTime) {
+            baseTime.textContent = leaderboard.formatTime(this.timer);
+        }
+
+        if (penaltyTime) {
+            penaltyTime.textContent = `+${leaderboard.formatTime(this.penaltyTime)}`;
+        }
+
+        if (accuracy) {
+            const accuracyPercent = this.totalClicks > 0 ? Math.round((this.correctClicks / this.totalClicks) * 100) : 100;
+            accuracy.textContent = `${accuracyPercent}%`;
         }
 
         // Display leaderboard
@@ -308,6 +534,11 @@ class Game {
         this.totalTime = 0;
         this.timer = 0;
         this.timerStarted = false;
+        this.penaltyTime = 0;
+        this.totalClicks = 0;
+        this.correctClicks = 0;
+        this.panOffsetX = 0;
+        this.panOffsetY = 0;
         this.state = 'loading';
         this.init();
     }
@@ -344,8 +575,20 @@ class Game {
     // Update timer display
     updateTimerDisplay() {
         const timerDisplay = document.getElementById('timer-display');
+        const penaltyDisplay = document.getElementById('penalty-display');
+        const totalTimeDisplay = document.getElementById('total-time-display');
+
         if (timerDisplay) {
             timerDisplay.textContent = leaderboard.formatTime(this.timer);
+        }
+
+        if (penaltyDisplay) {
+            penaltyDisplay.textContent = `+${leaderboard.formatTime(this.penaltyTime)}`;
+        }
+
+        if (totalTimeDisplay) {
+            const totalTime = this.timer + this.penaltyTime;
+            totalTimeDisplay.textContent = leaderboard.formatTime(totalTime);
         }
     }
 
@@ -356,7 +599,124 @@ class Game {
 
         if (this.currentLevel) {
             this.currentLevel.resize(newWidth, newHeight);
-            devMode.updateLevelInfo(this.currentLevel);
+        }
+    }
+
+    // Start level transition effect
+    startLevelTransition() {
+        this.levelTransition = {
+            type: 'fade',
+            alpha: 0,
+            maxAlpha: 255,
+            duration: 800,
+            startTime: millis()
+        };
+    }
+
+    // End level transition effect
+    endLevelTransition() {
+        if (this.levelTransition) {
+            this.levelTransition = null;
+        }
+    }
+
+    // Start celebration effect
+    startCelebrationEffect() {
+        this.celebrationEffect = {
+            type: 'confetti',
+            particles: this.createCelebrationParticles(),
+            duration: 3000,
+            startTime: millis()
+        };
+    }
+
+    // Create celebration particles
+    createCelebrationParticles() {
+        const particles = [];
+        for (let i = 0; i < 50; i++) {
+            particles.push({
+                x: Math.random() * this.canvasWidth,
+                y: -10,
+                vx: (Math.random() - 0.5) * 4,
+                vy: Math.random() * 3 + 1,
+                life: 1.0,
+                decay: 0.002,
+                size: 4 + Math.random() * 6,
+                color: this.getRandomCelebrationColor(),
+                rotation: Math.random() * Math.PI * 2,
+                rotationSpeed: (Math.random() - 0.5) * 0.1
+            });
+        }
+        return particles;
+    }
+
+    // Get random celebration color
+    getRandomCelebrationColor() {
+        const colors = [
+            [255, 0, 0],   // Red
+            [0, 255, 0],   // Green
+            [0, 0, 255],   // Blue
+            [255, 255, 0], // Yellow
+            [255, 0, 255], // Magenta
+            [0, 255, 255], // Cyan
+            [255, 165, 0], // Orange
+            [128, 0, 128]  // Purple
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    // Draw level transition effect
+    drawLevelTransition() {
+        if (!this.levelTransition) return;
+
+        const elapsed = millis() - this.levelTransition.startTime;
+        const progress = Math.min(elapsed / this.levelTransition.duration, 1);
+
+        if (this.levelTransition.type === 'fade') {
+            const alpha = Math.sin(progress * Math.PI) * this.levelTransition.maxAlpha;
+
+            push();
+            fill(255, 255, 255, alpha);
+            noStroke();
+            rect(0, 0, this.canvasWidth, this.canvasHeight);
+            pop();
+        }
+
+        if (progress >= 1) {
+            this.levelTransition = null;
+        }
+    }
+
+    // Draw celebration effect
+    drawCelebrationEffect() {
+        if (!this.celebrationEffect) return;
+
+        const elapsed = millis() - this.celebrationEffect.startTime;
+        const progress = Math.min(elapsed / this.celebrationEffect.duration, 1);
+
+        for (let particle of this.celebrationEffect.particles) {
+            if (particle.life > 0) {
+                push();
+                translate(particle.x, particle.y);
+                rotate(particle.rotation);
+
+                fill(particle.color[0], particle.color[1], particle.color[2], particle.life * 255);
+                noStroke();
+                rect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
+
+                pop();
+
+                // Update particle
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.life -= particle.decay;
+                particle.rotation += particle.rotationSpeed;
+                particle.vy += 0.1; // Gravity
+            }
+        }
+
+        if (progress >= 1) {
+            this.celebrationEffect = null;
         }
     }
 }
