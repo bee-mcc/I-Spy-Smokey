@@ -6,7 +6,8 @@ let leaderboard;
 function setup() {
     // Create canvas
     const canvasContainer = document.getElementById('canvas-container');
-    const canvas = createCanvas(800, 600);
+    // Start full-screen so the image can cover immediately even before container is shown
+    const canvas = createCanvas(windowWidth, windowHeight);
     canvas.parent('canvas-container');
 
     // Initialize game components
@@ -119,6 +120,10 @@ class Game {
         // Visual effects
         this.levelTransition = null;
         this.celebrationEffect = null;
+
+        // UI / layout
+        this.uiMode = 'overlay'; // 'overlay' or 'ui_above'
+        this.instructionsFadeTimeout = null;
     }
 
     async init() {
@@ -222,6 +227,8 @@ class Game {
             await level.loadImage();
             this.currentLevel = level;
             this.updateUI();
+            // After image is available, update layout and sizing
+            this.updateLayoutMode();
         } catch (error) {
             console.error('Error loading level:', error);
             throw error;
@@ -599,6 +606,78 @@ class Game {
 
         if (this.currentLevel) {
             this.currentLevel.resize(newWidth, newHeight);
+        }
+
+        this.updateLayoutMode();
+    }
+
+    // Decide whether to show UI above or overlay, and size canvas accordingly
+    // Images are always displayed at 1:1 pixel ratio, so layout decision is based on UI space only
+    updateLayoutMode() {
+        const container = document.getElementById('game-container');
+        const instructionsEl = document.querySelector('.instructions');
+        const uiTopEl = document.querySelector('.ui-top');
+
+        if (!this.currentLevel || !this.currentLevel.image) return;
+
+        const winW = windowWidth;
+        const winH = windowHeight;
+
+        // Estimate UI height (for placing above). Prefer actual measured heights if available
+        const uiTopH = uiTopEl ? uiTopEl.offsetHeight : 80;
+        const instructionsH = instructionsEl ? instructionsEl.offsetHeight : 64;
+        const estimatedUIHeight = uiTopH + instructionsH + 16; // small padding
+
+        // Decide layout based on available space for UI
+        // If we have enough space, show UI above; otherwise overlay it
+        const canShowAbove = winH >= estimatedUIHeight + 400; // Minimum canvas height
+
+        if (canShowAbove) {
+            // Switch to UI-above mode
+            if (container) container.classList.add('ui-above');
+            this.uiMode = 'ui_above';
+
+            // Compute canvas height as remaining space
+            const canvasH = Math.max(100, winH - estimatedUIHeight);
+            resizeCanvas(winW, canvasH);
+            this.canvasWidth = winW;
+            this.canvasHeight = canvasH;
+
+            if (this.currentLevel) {
+                this.currentLevel.resize(this.canvasWidth, this.canvasHeight);
+            }
+
+            // Ensure instructions are visible (no fade) in above mode
+            if (instructionsEl) instructionsEl.classList.remove('fade-out');
+            this.clearInstructionsFadeTimer();
+        } else {
+            // Overlay mode, canvas takes full window
+            if (container) container.classList.remove('ui-above');
+            this.uiMode = 'overlay';
+
+            resizeCanvas(winW, winH);
+            this.canvasWidth = winW;
+            this.canvasHeight = winH;
+
+            if (this.currentLevel) {
+                this.currentLevel.resize(this.canvasWidth, this.canvasHeight);
+            }
+
+            // Show instructions briefly, then fade out
+            if (instructionsEl) {
+                instructionsEl.classList.remove('fade-out');
+                this.clearInstructionsFadeTimer();
+                this.instructionsFadeTimeout = setTimeout(() => {
+                    instructionsEl.classList.add('fade-out');
+                }, 3500);
+            }
+        }
+    }
+
+    clearInstructionsFadeTimer() {
+        if (this.instructionsFadeTimeout) {
+            clearTimeout(this.instructionsFadeTimeout);
+            this.instructionsFadeTimeout = null;
         }
     }
 

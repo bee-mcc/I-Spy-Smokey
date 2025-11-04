@@ -8,7 +8,7 @@ class Level {
         this.imageY = 0;
         this.imageWidth = 0;
         this.imageHeight = 0;
-        this.scale = 1;
+        this.scale = 1; // Always 1:1 pixel ratio
         this.loaded = false;
 
         // Animation properties
@@ -43,45 +43,111 @@ class Level {
         });
     }
 
-    // Calculate image dimensions to fit canvas while maintaining aspect ratio
+    // Calculate image dimensions scaled to desktop screen size
     calculateImageDimensions() {
         if (!this.image) return;
 
-        const imageAspect = this.image.width / this.image.height;
-        const canvasAspect = this.canvasWidth / this.canvasHeight;
+        // Target desktop screen size (typical desktop resolution)
+        const targetDesktopWidth = 1920;
+        const targetDesktopHeight = 1080;
 
-        if (imageAspect > canvasAspect) {
-            // Image is wider than canvas
-            this.imageWidth = this.canvasWidth;
-            this.imageHeight = this.canvasWidth / imageAspect;
+        // Calculate scale to fit image within desktop screen size while maintaining aspect ratio
+        const imageAspect = this.image.width / this.image.height;
+        const desktopAspect = targetDesktopWidth / targetDesktopHeight;
+
+        let scaledWidth, scaledHeight;
+
+        if (imageAspect > desktopAspect) {
+            // Image is wider than desktop aspect ratio: match width
+            scaledWidth = targetDesktopWidth;
+            scaledHeight = targetDesktopWidth / imageAspect;
         } else {
-            // Image is taller than canvas
-            this.imageHeight = this.canvasHeight;
-            this.imageWidth = this.canvasHeight * imageAspect;
+            // Image is taller or equal: match height
+            scaledHeight = targetDesktopHeight;
+            scaledWidth = targetDesktopHeight * imageAspect;
         }
 
-        // Center the image
-        this.imageX = (this.canvasWidth - this.imageWidth) / 2;
-        this.imageY = (this.canvasHeight - this.imageHeight) / 2;
+        // Use scaled dimensions
+        this.imageWidth = scaledWidth;
+        this.imageHeight = scaledHeight;
+        
+        // Calculate scale factor for coordinate conversion (needed for click detection)
+        this.scale = this.imageWidth / this.image.width;
 
-        // Store original values for panning
-        this.originalImageX = this.imageX;
-        this.originalImageY = this.imageY;
+        // Calculate initial viewport position
+        // If image is larger than canvas, start at top-left (0,0) to show a viewport-sized portion
+        // If image is smaller than canvas, center it
+        let initialX = 0;
+        let initialY = 0;
+
+        if (this.imageWidth < this.canvasWidth) {
+            initialX = (this.canvasWidth - this.imageWidth) / 2;
+        }
+        if (this.imageHeight < this.canvasHeight) {
+            initialY = (this.canvasHeight - this.imageHeight) / 2;
+        }
+
+        // Store initial viewport position (for panning bounds calculation)
+        this.originalImageX = initialX;
+        this.originalImageY = initialY;
         this.originalImageWidth = this.imageWidth;
         this.originalImageHeight = this.imageHeight;
 
-        // Calculate scale factor for coordinate conversion
-        this.scale = this.imageWidth / this.image.width;
+        // Set current position (applying pan offset)
+        // When dragging right (panOffsetX > 0), we want to see more left side, so imageX should decrease
+        // So: imageX = originalImageX - panOffsetX (inverted relationship)
+        this.imageX = this.originalImageX - this.panOffsetX;
+        this.imageY = this.originalImageY - this.panOffsetY;
+
+        // Constrain pan to valid bounds
+        this.constrainPan();
     }
 
-    // Set pan offset for touch controls
+    // Constrain pan offset to keep viewport within image bounds
+    constrainPan() {
+        // If image is smaller than canvas, center it and don't allow panning
+        if (this.imageWidth <= this.canvasWidth) {
+            this.panOffsetX = 0;
+            this.imageX = this.originalImageX;
+        } else {
+            // Image is larger than canvas - allow panning
+            // imageX represents source position in image (0 = left edge, max = right edge visible)
+            // imageX ranges from 0 to (imageWidth - canvasWidth)
+            const maxImageX = this.imageWidth - this.canvasWidth;
+            
+            // Constrain imageX to valid range
+            this.imageX = Math.max(0, Math.min(maxImageX, this.imageX));
+            
+            // Update panOffset to reflect the constrained position
+            // panOffset = originalImageX - imageX (inverted relationship)
+            this.panOffsetX = this.originalImageX - this.imageX;
+        }
+
+        if (this.imageHeight <= this.canvasHeight) {
+            this.panOffsetY = 0;
+            this.imageY = this.originalImageY;
+        } else {
+            // Image is larger than canvas - allow panning
+            const maxImageY = this.imageHeight - this.canvasHeight;
+            
+            // Constrain imageY to valid range
+            this.imageY = Math.max(0, Math.min(maxImageY, this.imageY));
+            
+            // Update panOffset to reflect the constrained position (inverted relationship)
+            this.panOffsetY = this.originalImageY - this.imageY;
+        }
+    }
+
+    // Set pan offset for touch controls with bounds checking
     setPanOffset(offsetX, offsetY) {
         this.panOffsetX = offsetX;
         this.panOffsetY = offsetY;
 
-        // Update image position with pan offset
-        this.imageX = this.originalImageX + offsetX;
-        this.imageY = this.originalImageY + offsetY;
+        // Update image position with pan offset (inverted) and constrain to bounds
+        // When dragging right (offsetX > 0), we want imageX to decrease (show more left side)
+        this.imageX = this.originalImageX - offsetX;
+        this.imageY = this.originalImageY - offsetY;
+        this.constrainPan();
     }
 
     // Display the level image
@@ -92,8 +158,38 @@ class Level {
         let offsetX = this.imageX + this.shakeOffset;
         let offsetY = this.imageY;
 
-        // Draw the image
-        image(this.image, offsetX, offsetY, this.imageWidth, this.imageHeight);
+        // Calculate which portion of the image to display
+        // If scaled image is larger than canvas, show only the viewport portion
+        if (this.imageWidth > this.canvasWidth || this.imageHeight > this.canvasHeight) {
+            // Calculate source rectangle in SCALED image coordinates
+            let srcX = this.imageWidth > this.canvasWidth ? this.imageX : 0;
+            let srcY = this.imageHeight > this.canvasHeight ? this.imageY : 0;
+            
+            // Apply shake effect to viewport position
+            srcX += this.shakeOffset;
+            
+            const srcWidth = Math.min(this.canvasWidth, this.imageWidth);
+            const srcHeight = Math.min(this.canvasHeight, this.imageHeight);
+            
+            // Convert scaled coordinates to original image coordinates for source rectangle
+            // srcX_scaled / scale = srcX_original
+            const originalSrcX = srcX / this.scale;
+            const originalSrcY = srcY / this.scale;
+            const originalSrcWidth = srcWidth / this.scale;
+            const originalSrcHeight = srcHeight / this.scale;
+            
+            // Draw only the visible portion using source rectangle
+            // image(img, dx, dy, dWidth, dHeight, sx, sy, sWidth, sHeight)
+            image(this.image, 
+                0, 0, // Destination position (always start at canvas origin)
+                srcWidth, srcHeight, // Destination size (viewport size in scaled coordinates)
+                originalSrcX, originalSrcY, // Source position in original image
+                originalSrcWidth, originalSrcHeight // Source size in original image
+            );
+        } else {
+            // Scaled image fits entirely in canvas, draw it centered
+            image(this.image, offsetX, offsetY, this.imageWidth, this.imageHeight);
+        }
 
         // Update shake animation
         if (this.shakeIntensity > 0) {
@@ -116,16 +212,48 @@ class Level {
     isClickInRegion(mouseX, mouseY) {
         if (!this.loaded) return false;
 
-        // Convert mouse coordinates to image coordinates
-        const imageMouseX = (mouseX - this.imageX) / this.scale;
-        const imageMouseY = (mouseY - this.imageY) / this.scale;
+        // First check if click is within canvas bounds
+        if (mouseX < 0 || mouseX > this.canvasWidth ||
+            mouseY < 0 || mouseY > this.canvasHeight) {
+            return false;
+        }
+
+        // Convert canvas coordinates to scaled image coordinates
+        let scaledImageMouseX, scaledImageMouseY;
+        
+        if (this.imageWidth > this.canvasWidth) {
+            // Scaled image is larger - use viewport offset
+            scaledImageMouseX = this.imageX + mouseX;
+        } else {
+            // Scaled image is smaller - account for centering
+            scaledImageMouseX = mouseX - this.imageX;
+        }
+        
+        if (this.imageHeight > this.canvasHeight) {
+            // Scaled image is larger - use viewport offset
+            scaledImageMouseY = this.imageY + mouseY;
+        } else {
+            // Scaled image is smaller - account for centering
+            scaledImageMouseY = mouseY - this.imageY;
+        }
+
+        // Check if coordinates are within scaled image bounds
+        if (scaledImageMouseX < 0 || scaledImageMouseX > this.imageWidth ||
+            scaledImageMouseY < 0 || scaledImageMouseY > this.imageHeight) {
+            return false;
+        }
+
+        // Convert scaled coordinates to original image coordinates for region checking
+        // Region coordinates are in original image space
+        const originalImageMouseX = scaledImageMouseX / this.scale;
+        const originalImageMouseY = scaledImageMouseY / this.scale;
 
         const region = this.data.clickRegion;
 
-        return imageMouseX >= region.x &&
-            imageMouseX <= region.x + region.width &&
-            imageMouseY >= region.y &&
-            imageMouseY <= region.y + region.height;
+        return originalImageMouseX >= region.x &&
+            originalImageMouseX <= region.x + region.width &&
+            originalImageMouseY >= region.y &&
+            originalImageMouseY <= region.y + region.height;
     }
 
     // Handle click on the level
@@ -397,10 +525,17 @@ class Level {
     resize(newWidth, newHeight) {
         this.canvasWidth = newWidth;
         this.canvasHeight = newHeight;
+        
+        // Recalculate dimensions (this will recalculate originalImageX/Y based on new canvas size)
+        // But preserve current pan offset to maintain viewport position as much as possible
+        const savedPanX = this.panOffsetX;
+        const savedPanY = this.panOffsetY;
+        
         this.calculateImageDimensions();
-
-        // Reset pan offset when resizing
-        this.panOffsetX = 0;
-        this.panOffsetY = 0;
+        
+        // Restore pan offset and constrain it
+        this.panOffsetX = savedPanX;
+        this.panOffsetY = savedPanY;
+        this.constrainPan();
     }
 }
