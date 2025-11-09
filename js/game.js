@@ -492,9 +492,9 @@ class Game {
             this.isPanning = true;
             this.cancelLongPress();
 
-            // Update pan offset
-            this.panOffsetX += deltaX;
-            this.panOffsetY += deltaY;
+            // Update pan offset (move content opposite drag direction)
+            this.panOffsetX -= deltaX;
+            this.panOffsetY -= deltaY;
 
             // Update level pan
             this.currentLevel.setPanOffset(this.panOffsetX, this.panOffsetY);

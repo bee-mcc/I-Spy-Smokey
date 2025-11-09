@@ -94,10 +94,9 @@ class Level {
         this.originalImageHeight = this.imageHeight;
 
         // Set current position (applying pan offset)
-        // When dragging right (panOffsetX > 0), we want to see more left side, so imageX should decrease
-        // So: imageX = originalImageX - panOffsetX (inverted relationship)
-        this.imageX = this.originalImageX - this.panOffsetX;
-        this.imageY = this.originalImageY - this.panOffsetY;
+        // Apply current pan offset
+        this.imageX = this.originalImageX + this.panOffsetX;
+        this.imageY = this.originalImageY + this.panOffsetY;
 
         // Constrain pan to valid bounds
         this.constrainPan();
@@ -105,36 +104,23 @@ class Level {
 
     // Constrain pan offset to keep viewport within image bounds
     constrainPan() {
-        // If image is smaller than canvas, center it and don't allow panning
+        const maxPanX = Math.max(0, this.imageWidth - this.canvasWidth);
+        const maxPanY = Math.max(0, this.imageHeight - this.canvasHeight);
+
         if (this.imageWidth <= this.canvasWidth) {
             this.panOffsetX = 0;
             this.imageX = this.originalImageX;
         } else {
-            // Image is larger than canvas - allow panning
-            // imageX represents source position in image (0 = left edge, max = right edge visible)
-            // imageX ranges from 0 to (imageWidth - canvasWidth)
-            const maxImageX = this.imageWidth - this.canvasWidth;
-            
-            // Constrain imageX to valid range
-            this.imageX = Math.max(0, Math.min(maxImageX, this.imageX));
-            
-            // Update panOffset to reflect the constrained position
-            // panOffset = originalImageX - imageX (inverted relationship)
-            this.panOffsetX = this.originalImageX - this.imageX;
+            this.panOffsetX = Math.max(0, Math.min(maxPanX, this.panOffsetX));
+            this.imageX = this.originalImageX + this.panOffsetX;
         }
 
         if (this.imageHeight <= this.canvasHeight) {
             this.panOffsetY = 0;
             this.imageY = this.originalImageY;
         } else {
-            // Image is larger than canvas - allow panning
-            const maxImageY = this.imageHeight - this.canvasHeight;
-            
-            // Constrain imageY to valid range
-            this.imageY = Math.max(0, Math.min(maxImageY, this.imageY));
-            
-            // Update panOffset to reflect the constrained position (inverted relationship)
-            this.panOffsetY = this.originalImageY - this.imageY;
+            this.panOffsetY = Math.max(0, Math.min(maxPanY, this.panOffsetY));
+            this.imageY = this.originalImageY + this.panOffsetY;
         }
     }
 
@@ -143,10 +129,6 @@ class Level {
         this.panOffsetX = offsetX;
         this.panOffsetY = offsetY;
 
-        // Update image position with pan offset (inverted) and constrain to bounds
-        // When dragging right (offsetX > 0), we want imageX to decrease (show more left side)
-        this.imageX = this.originalImageX - offsetX;
-        this.imageY = this.originalImageY - offsetY;
         this.constrainPan();
     }
 
