@@ -22,6 +22,39 @@
             </div>
         </div>
 
+        <!-- Level Start Screen -->
+        <div id="level-start-screen" class="level-start-screen" style="display: none;">
+            <div class="level-start-content">
+                <div class="decorative-shapes">
+                    <!-- Shapes will be added dynamically via JS -->
+                </div>
+                <div class="level-start-main">
+                    <h1 id="level-start-title" class="level-start-title">Level 1</h1>
+                    <div class="level-start-counter">
+                        Level <span id="level-start-current">1</span> / <span id="level-start-total">5</span>
+                    </div>
+                    <p class="level-start-instructions">🔍 Find Smokey the cat! 🐱 Click on him to advance to the next
+                        level! ⭐</p>
+                    <div class="level-start-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Time:</span>
+                            <span id="level-start-total-time" class="stat-value">00:00.000</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Penalties:</span>
+                            <span id="level-start-penalties" class="stat-value">+00:00.000</span>
+                        </div>
+                    </div>
+                    <button id="go-button" class="go-button">GO!</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Countdown Overlay -->
+        <div id="countdown-overlay" class="countdown-overlay" style="display: none;">
+            <div id="countdown-number" class="countdown-number">3</div>
+        </div>
+
         <!-- Game UI -->
         <div id="game-ui" class="game-ui" style="display: none;">
             <div class="ui-top">
@@ -57,6 +90,19 @@
             <!-- p5.js canvas will be inserted here -->
         </div>
 
+        <!-- Floating Timer -->
+        <div id="floating-timer" class="floating-timer" style="display: none;">
+            <div class="floating-timer-content">
+                <div class="timer-item">
+                    <span class="timer-label">Level:</span>
+                    <span id="floating-level-time" class="timer-value">00:00.000</span>
+                </div>
+                <div class="timer-item total">
+                    <span class="timer-label">Total:</span>
+                    <span id="floating-total-time" class="timer-value">00:00.000</span>
+                </div>
+            </div>
+        </div>
 
 
         <!-- Game Complete Modal -->

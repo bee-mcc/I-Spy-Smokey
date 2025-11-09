@@ -95,6 +95,8 @@ class Game {
         this.startTime = 0;
         this.totalTime = 0;
         this.timer = 0;
+        this.levelStartTime = 0; // Time when current level started
+        this.levelTimer = 0; // Time spent on current level
         this.timerStarted = false;
         this.canvasWidth = 800;
         this.canvasHeight = 600;
@@ -124,6 +126,20 @@ class Game {
         // UI / layout
         this.uiMode = 'overlay'; // 'overlay' or 'ui_above'
         this.instructionsFadeTimeout = null;
+
+        // Level start screen
+        this.levelStartShown = false;
+        this.countdownActive = false;
+        this.timerPaused = true;
+
+        // Color palettes for level start screens
+        this.colorPalettes = [
+            ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181'],
+            ['#A8E6CF', '#FFD93D', '#6BCB77', '#4D96FF', '#FF6B9D'],
+            ['#C44569', '#F8B500', '#6C5CE7', '#00D2D3', '#FF6B81'],
+            ['#10AC84', '#EE5A6F', '#5F27CD', '#00D2FF', '#FF9FF3'],
+            ['#FF6348', '#2ED573', '#5352ED', '#FFA502', '#70A1FF']
+        ];
     }
 
     async init() {
@@ -185,6 +201,183 @@ class Game {
 
         if (gameUI) gameUI.style.display = 'block';
         if (canvasContainer) canvasContainer.style.display = 'block';
+
+        // Hide old UI elements
+        const uiTop = document.querySelector('.ui-top');
+        const instructions = document.querySelector('.instructions');
+        if (uiTop) uiTop.style.display = 'none';
+        if (instructions) instructions.style.display = 'none';
+    }
+
+    // Show level start screen
+    showLevelStartScreen() {
+        const levelStartScreen = document.getElementById('level-start-screen');
+        if (!levelStartScreen) return;
+
+        // Update level info
+        const levelTitle = document.getElementById('level-start-title');
+        const levelCurrent = document.getElementById('level-start-current');
+        const levelTotal = document.getElementById('level-start-total');
+        const totalTimeDisplay = document.getElementById('level-start-total-time');
+        const penaltiesDisplay = document.getElementById('level-start-penalties');
+
+        if (this.currentLevel) {
+            if (levelTitle) levelTitle.textContent = this.currentLevel.data.name;
+        }
+
+        if (levelCurrent) levelCurrent.textContent = this.currentLevelIndex + 1;
+        if (levelTotal) levelTotal.textContent = this.levels.length;
+
+        // Update stats
+        const totalTime = this.timer + this.penaltyTime;
+        if (totalTimeDisplay) totalTimeDisplay.textContent = leaderboard.formatTime(totalTime);
+        if (penaltiesDisplay) penaltiesDisplay.textContent = `+${leaderboard.formatTime(this.penaltyTime)}`;
+
+        // Generate random color palette and create decorative shapes
+        this.generateDecorativeShapes();
+
+        // Show the screen
+        levelStartScreen.style.display = 'flex';
+        this.levelStartShown = true;
+        this.timerPaused = true;
+
+        // Hide floating timer
+        const floatingTimer = document.getElementById('floating-timer');
+        if (floatingTimer) floatingTimer.style.display = 'none';
+
+        // Setup go button handler
+        this.setupGoButton();
+    }
+
+    // Generate decorative shapes with random colors
+    generateDecorativeShapes() {
+        const shapesContainer = document.querySelector('.decorative-shapes');
+        if (!shapesContainer) return;
+
+        // Clear existing shapes
+        shapesContainer.innerHTML = '';
+
+        // Pick a random color palette
+        const palette = this.colorPalettes[Math.floor(Math.random() * this.colorPalettes.length)];
+
+        // Apply colors to level start screen elements
+        const content = document.querySelector('.level-start-content');
+        if (content) {
+            const primaryColor = palette[0];
+            content.style.borderTop = `8px solid ${primaryColor}`;
+            const goButton = document.getElementById('go-button');
+            if (goButton) {
+                goButton.style.background = `linear-gradient(135deg, ${palette[0]}, ${palette[1]})`;
+            }
+        }
+
+        // Create random decorative shapes
+        const shapeTypes = ['circle', 'square', 'triangle'];
+        const numShapes = 8 + Math.floor(Math.random() * 5); // 8-12 shapes
+
+        for (let i = 0; i < numShapes; i++) {
+            const shape = document.createElement('div');
+            shape.className = `decorative-shape ${shapeTypes[Math.floor(Math.random() * shapeTypes.length)]}`;
+
+            const color = palette[Math.floor(Math.random() * palette.length)];
+            const size = 30 + Math.random() * 60; // 30-90px
+            const left = Math.random() * 100; // 0-100%
+            const top = Math.random() * 100; // 0-100%
+            const delay = Math.random() * 2; // 0-2s delay
+
+            if (shape.classList.contains('triangle')) {
+                shape.style.borderLeftWidth = `${size / 2}px`;
+                shape.style.borderRightWidth = `${size / 2}px`;
+                shape.style.borderBottomWidth = `${size}px`;
+                shape.style.borderLeftColor = 'transparent';
+                shape.style.borderRightColor = 'transparent';
+                shape.style.borderBottomColor = color;
+            } else {
+                shape.style.width = `${size}px`;
+                shape.style.height = `${size}px`;
+                shape.style.backgroundColor = color;
+            }
+
+            shape.style.left = `${left}%`;
+            shape.style.top = `${top}%`;
+            shape.style.animationDelay = `${delay}s`;
+
+            shapesContainer.appendChild(shape);
+        }
+    }
+
+    // Setup go button event handler
+    setupGoButton() {
+        const goButton = document.getElementById('go-button');
+        if (!goButton) return;
+
+        // Remove existing handlers
+        const newButton = goButton.cloneNode(true);
+        goButton.parentNode.replaceChild(newButton, goButton);
+
+        // Add click handler
+        newButton.addEventListener('click', () => {
+            this.startCountdown();
+        });
+    }
+
+    // Start countdown animation
+    startCountdown() {
+        const levelStartScreen = document.getElementById('level-start-screen');
+        const countdownOverlay = document.getElementById('countdown-overlay');
+        const countdownNumber = document.getElementById('countdown-number');
+
+        if (!countdownOverlay || !countdownNumber) return;
+
+        // Hide level start screen
+        if (levelStartScreen) levelStartScreen.style.display = 'none';
+
+        // Show countdown
+        countdownOverlay.style.display = 'flex';
+        this.countdownActive = true;
+
+        // Start countdown sequence - show 3 immediately
+        let count = 3;
+        countdownNumber.textContent = count;
+        countdownNumber.className = 'countdown-number';
+
+        const countdownInterval = setInterval(() => {
+            count--;
+            if (count > 0) {
+                countdownNumber.textContent = count;
+                countdownNumber.className = 'countdown-number';
+                countdownNumber.style.animation = 'none';
+                // Force reflow to restart animation
+                void countdownNumber.offsetWidth;
+                countdownNumber.style.animation = '';
+            } else {
+                // Show GO
+                countdownNumber.textContent = 'GO!';
+                countdownNumber.className = 'countdown-number go';
+                clearInterval(countdownInterval);
+
+                // Hide countdown and start game after GO animation
+                setTimeout(() => {
+                    countdownOverlay.style.display = 'none';
+                    this.countdownActive = false;
+
+                    // Start timer if not already started (set startTime based on elapsed)
+                    if (!this.timerStarted) {
+                        this.startTime = millis();
+                        this.timerStarted = true;
+                    }
+
+                    // Start level timer
+                    this.levelStartTime = millis();
+                    this.levelTimer = 0;
+
+                    // Unpause timer and show floating timer
+                    this.timerPaused = false;
+                    const floatingTimer = document.getElementById('floating-timer');
+                    if (floatingTimer) floatingTimer.style.display = 'block';
+                }, 800);
+            }
+        }, 1000);
     }
 
     // Show error message
@@ -229,6 +422,9 @@ class Game {
             this.updateUI();
             // After image is available, update layout and sizing
             this.updateLayoutMode();
+
+            // Show level start screen
+            this.showLevelStartScreen();
         } catch (error) {
             console.error('Error loading level:', error);
             throw error;
@@ -237,8 +433,11 @@ class Game {
 
     // Update game state
     update() {
-        if (this.state === 'playing' && this.timerStarted) {
+        if (this.state === 'playing' && this.timerStarted && !this.timerPaused) {
             this.timer = millis() - this.startTime;
+            if (this.levelStartTime > 0) {
+                this.levelTimer = millis() - this.levelStartTime;
+            }
             this.updateTimerDisplay();
         }
     }
@@ -337,8 +536,9 @@ class Game {
     // Handle long press
     handleLongPress(mouseX, mouseY) {
         if (this.state !== 'playing' || !this.currentLevel) return;
+        if (this.timerPaused || this.countdownActive) return; // Don't register clicks during pause/countdown
 
-        // Start timer on first interaction
+        // Start timer on first interaction (should already be started after countdown, but keep for safety)
         if (!this.timerStarted) {
             this.startTime = millis();
             this.timerStarted = true;
@@ -375,8 +575,9 @@ class Game {
     // Handle regular click (for non-touch devices)
     handleClick(mouseX, mouseY) {
         if (this.state !== 'playing' || !this.currentLevel) return;
+        if (this.timerPaused || this.countdownActive) return; // Don't register clicks during pause/countdown
 
-        // Start timer on first click
+        // Start timer on first click (should already be started after countdown, but keep for safety)
         if (!this.timerStarted) {
             this.startTime = millis();
             this.timerStarted = true;
@@ -403,6 +604,14 @@ class Game {
 
     // Move to next level
     async nextLevel() {
+        // Pause timer
+        this.timerPaused = true;
+        this.levelStartTime = 0; // Reset level timer
+
+        // Hide floating timer
+        const floatingTimer = document.getElementById('floating-timer');
+        if (floatingTimer) floatingTimer.style.display = 'none';
+
         // Start level transition effect
         this.startLevelTransition();
 
@@ -540,13 +749,27 @@ class Game {
         this.startTime = 0;
         this.totalTime = 0;
         this.timer = 0;
+        this.levelStartTime = 0;
+        this.levelTimer = 0;
         this.timerStarted = false;
+        this.timerPaused = true;
         this.penaltyTime = 0;
         this.totalClicks = 0;
         this.correctClicks = 0;
         this.panOffsetX = 0;
         this.panOffsetY = 0;
+        this.levelStartShown = false;
+        this.countdownActive = false;
         this.state = 'loading';
+
+        // Hide UI elements
+        const floatingTimer = document.getElementById('floating-timer');
+        const levelStartScreen = document.getElementById('level-start-screen');
+        const countdownOverlay = document.getElementById('countdown-overlay');
+        if (floatingTimer) floatingTimer.style.display = 'none';
+        if (levelStartScreen) levelStartScreen.style.display = 'none';
+        if (countdownOverlay) countdownOverlay.style.display = 'none';
+
         this.init();
     }
 
@@ -581,6 +804,20 @@ class Game {
 
     // Update timer display
     updateTimerDisplay() {
+        // Update floating timer
+        const floatingLevelTime = document.getElementById('floating-level-time');
+        const floatingTotalTime = document.getElementById('floating-total-time');
+
+        if (floatingLevelTime) {
+            floatingLevelTime.textContent = leaderboard.formatTime(this.levelTimer);
+        }
+
+        if (floatingTotalTime) {
+            const totalTime = this.timer + this.penaltyTime;
+            floatingTotalTime.textContent = leaderboard.formatTime(totalTime);
+        }
+
+        // Also update old timer displays if they exist (for backwards compatibility)
         const timerDisplay = document.getElementById('timer-display');
         const penaltyDisplay = document.getElementById('penalty-display');
         const totalTimeDisplay = document.getElementById('total-time-display');
