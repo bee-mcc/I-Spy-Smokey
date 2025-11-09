@@ -131,6 +131,7 @@ class Game {
         this.levelStartShown = false;
         this.countdownActive = false;
         this.timerPaused = true;
+        this.renderEnabled = false;
 
         // Color palettes for level start screens
         this.colorPalettes = [
@@ -164,9 +165,9 @@ class Game {
             // Load first level
             if (this.levels.length > 0) {
                 await this.loadCurrentLevel();
-                this.state = 'playing';
                 this.hideLoadingScreen();
                 this.showGameUI();
+                this.state = 'playing';
             } else {
                 console.error('No levels found');
                 this.showError('No levels found. Please add level images and metadata.');
@@ -185,6 +186,8 @@ class Game {
         if (loadingScreen) {
             loadingScreen.style.display = 'flex';
         }
+
+        this.setRenderEnabled(false);
 
         // Try to load custom loading gif
         if (loadingGif) {
@@ -205,11 +208,20 @@ class Game {
         if (loadingScreen) {
             loadingScreen.style.display = 'none';
         }
+
     }
 
     // Simple delay helper
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    setRenderEnabled(enabled) {
+        this.renderEnabled = enabled;
+
+        if (!enabled && typeof clear === 'function') {
+            clear();
+        }
     }
 
     // Show game UI
@@ -232,6 +244,7 @@ class Game {
         const levelStartScreen = document.getElementById('level-start-screen');
         if (!levelStartScreen) return;
 
+        this.setRenderEnabled(false);
         const modalBackground = this.getRandomBrightColor();
         levelStartScreen.style.backgroundImage = 'none';
         levelStartScreen.style.background = modalBackground;
@@ -351,6 +364,9 @@ class Game {
 
         if (!countdownOverlay || !countdownNumber) return;
 
+        // Hide the canvas while transitioning between UI states to prevent image flashes
+        this.setRenderEnabled(false);
+
         // Hide level start screen
         if (levelStartScreen) levelStartScreen.style.display = 'none';
 
@@ -408,6 +424,7 @@ class Game {
                 setTimeout(() => {
                     countdownOverlay.style.display = 'none';
                     this.countdownActive = false;
+                    this.setRenderEnabled(true);
 
                     // Start timer if not already started (set startTime based on elapsed)
                     if (!this.timerStarted) {
@@ -471,6 +488,12 @@ class Game {
             // After image is available, update layout and sizing
             this.updateLayoutMode();
 
+            // Synchronize game pan offsets with level's initial viewport
+            if (this.currentLevel) {
+                this.panOffsetX = this.currentLevel.panOffsetX;
+                this.panOffsetY = this.currentLevel.panOffsetY;
+            }
+
             // Show level start screen
             this.showLevelStartScreen();
         } catch (error) {
@@ -493,7 +516,9 @@ class Game {
     // Display current level
     display() {
         if (this.state === 'playing' && this.currentLevel) {
-            this.currentLevel.display();
+            if (this.renderEnabled) {
+                this.currentLevel.display();
+            }
         }
 
         // Draw level transition effect
@@ -809,6 +834,7 @@ class Game {
         this.levelStartShown = false;
         this.countdownActive = false;
         this.state = 'loading';
+        this.renderEnabled = false;
 
         // Hide UI elements
         const floatingTimer = document.getElementById('floating-timer');

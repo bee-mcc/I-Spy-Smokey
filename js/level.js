@@ -24,6 +24,7 @@ class Level {
         this.originalImageY = 0;
         this.originalImageWidth = 0;
         this.originalImageHeight = 0;
+        this.initialViewportRandomized = false;
     }
 
     // Load the level image
@@ -67,6 +68,14 @@ class Level {
             scaledWidth = targetDesktopHeight * imageAspect;
         }
 
+        // Apply additional zoom for larger (desktop) viewports so players must pan
+        const desktopBreakpoint = 1024;
+        const desktopZoomFactor = this.data.desktopZoomFactor || 2;
+        if (this.canvasWidth >= desktopBreakpoint) {
+            scaledWidth *= desktopZoomFactor;
+            scaledHeight *= desktopZoomFactor;
+        }
+
         // Use scaled dimensions
         this.imageWidth = scaledWidth;
         this.imageHeight = scaledHeight;
@@ -93,13 +102,13 @@ class Level {
         this.originalImageWidth = this.imageWidth;
         this.originalImageHeight = this.imageHeight;
 
-        // Set current position (applying pan offset)
-        // Apply current pan offset
-        this.imageX = this.originalImageX + this.panOffsetX;
-        this.imageY = this.originalImageY + this.panOffsetY;
-
-        // Constrain pan to valid bounds
-        this.constrainPan();
+        if (!this.initialViewportRandomized) {
+            this.setRandomInitialViewport();
+            this.initialViewportRandomized = true;
+        } else {
+            // Constrain pan to valid bounds after resize/zoom changes
+            this.constrainPan();
+        }
     }
 
     // Constrain pan offset to keep viewport within image bounds
@@ -128,6 +137,25 @@ class Level {
     setPanOffset(offsetX, offsetY) {
         this.panOffsetX = offsetX;
         this.panOffsetY = offsetY;
+
+        this.constrainPan();
+    }
+
+    setRandomInitialViewport() {
+        const maxPanX = Math.max(0, this.imageWidth - this.canvasWidth);
+        const maxPanY = Math.max(0, this.imageHeight - this.canvasHeight);
+
+        if (maxPanX > 0) {
+            this.panOffsetX = Math.random() * maxPanX;
+        } else {
+            this.panOffsetX = 0;
+        }
+
+        if (maxPanY > 0) {
+            this.panOffsetY = Math.random() * maxPanY;
+        } else {
+            this.panOffsetY = 0;
+        }
 
         this.constrainPan();
     }
