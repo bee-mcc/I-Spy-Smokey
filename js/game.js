@@ -140,6 +140,15 @@ class Game {
             ['#10AC84', '#EE5A6F', '#5F27CD', '#00D2FF', '#FF9FF3'],
             ['#FF6348', '#2ED573', '#5352ED', '#FFA502', '#70A1FF']
         ];
+
+        this.minInitialLoadTime = 1500;
+    }
+
+    getRandomBrightColor() {
+        const hue = Math.floor(Math.random() * 360);
+        const saturation = 80 + Math.floor(Math.random() * 20); // 80-99%
+        const lightness = 50 + Math.floor(Math.random() * 10); // 50-59%
+        return `hsl(${hue}deg, ${saturation}%, ${lightness}%)`;
     }
 
     async init() {
@@ -147,8 +156,10 @@ class Game {
             // Show loading screen
             this.showLoadingScreen();
 
-            // Load levels data
-            await this.loadLevels();
+            const minLoadDelay = this.delay(this.minInitialLoadTime);
+
+            // Load levels data with enforced delay to showcase loading animation
+            await Promise.all([this.loadLevels(), minLoadDelay]);
 
             // Load first level
             if (this.levels.length > 0) {
@@ -177,11 +188,13 @@ class Game {
 
         // Try to load custom loading gif
         if (loadingGif) {
+            loadingGif.style.display = 'block';
             loadingGif.onload = () => {
                 loadingGif.style.display = 'block';
             };
             loadingGif.onerror = () => {
                 console.log('Custom loading gif not found, using text only');
+                loadingGif.style.display = 'none';
             };
         }
     }
@@ -192,6 +205,11 @@ class Game {
         if (loadingScreen) {
             loadingScreen.style.display = 'none';
         }
+    }
+
+    // Simple delay helper
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     // Show game UI
@@ -213,6 +231,10 @@ class Game {
     showLevelStartScreen() {
         const levelStartScreen = document.getElementById('level-start-screen');
         if (!levelStartScreen) return;
+
+        const modalBackground = this.getRandomBrightColor();
+        levelStartScreen.style.backgroundImage = 'none';
+        levelStartScreen.style.background = modalBackground;
 
         // Update level info
         const levelTitle = document.getElementById('level-start-title');
@@ -332,14 +354,32 @@ class Game {
         // Hide level start screen
         if (levelStartScreen) levelStartScreen.style.display = 'none';
 
+        const overlayColors = [
+            this.getRandomBrightColor(),
+            this.getRandomBrightColor(),
+            this.getRandomBrightColor(),
+            this.getRandomBrightColor()
+        ];
+        const numberColors = [
+            this.getRandomBrightColor(),
+            this.getRandomBrightColor(),
+            this.getRandomBrightColor(),
+            this.getRandomBrightColor()
+        ];
+        let overlayIndex = 0;
+        let numberIndex = 0;
+
         // Show countdown
         countdownOverlay.style.display = 'flex';
+        countdownOverlay.style.backgroundImage = 'none';
+        countdownOverlay.style.background = overlayColors[overlayIndex];
         this.countdownActive = true;
 
         // Start countdown sequence - show 3 immediately
         let count = 3;
         countdownNumber.textContent = count;
         countdownNumber.className = 'countdown-number';
+        countdownNumber.style.background = numberColors[numberIndex];
 
         const countdownInterval = setInterval(() => {
             count--;
@@ -347,6 +387,10 @@ class Game {
                 countdownNumber.textContent = count;
                 countdownNumber.className = 'countdown-number';
                 countdownNumber.style.animation = 'none';
+                overlayIndex = Math.min(overlayIndex + 1, overlayColors.length - 1);
+                numberIndex = Math.min(numberIndex + 1, numberColors.length - 1);
+                countdownOverlay.style.background = overlayColors[overlayIndex];
+                countdownNumber.style.background = numberColors[numberIndex];
                 // Force reflow to restart animation
                 void countdownNumber.offsetWidth;
                 countdownNumber.style.animation = '';
@@ -354,6 +398,10 @@ class Game {
                 // Show GO
                 countdownNumber.textContent = 'GO!';
                 countdownNumber.className = 'countdown-number go';
+                overlayIndex = Math.min(overlayIndex + 1, overlayColors.length - 1);
+                numberIndex = Math.min(numberIndex + 1, numberColors.length - 1);
+                countdownOverlay.style.background = overlayColors[overlayIndex];
+                countdownNumber.style.background = numberColors[numberIndex];
                 clearInterval(countdownInterval);
 
                 // Hide countdown and start game after GO animation
