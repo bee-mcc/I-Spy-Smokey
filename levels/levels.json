@@ -1,15 +1,125 @@
 {
-    "levels": [
-        {
-            "id": 1,
-            "name": "Smokey In The Barnyard",
-            "image": "pic.jpeg",
-            "clickRegion": {
-                "x": 3027,
-                "y": 356,
-                "width": 355,
-                "height": 199
-            }
-        }
-    ]
+  "levels": [
+    {
+      "id": 1,
+      "name": "Smokey in With the Men",
+      "image": "pic1.png",
+      "clickRegion": {
+        "x": 75,
+        "y": 291,
+        "width": 83,
+        "height": 62
+      }
+    },
+    {
+      "id": 2,
+      "name": "Screamin' Smokeys!",
+      "image": "pic2.png",
+      "clickRegion": {
+        "x": 59,
+        "y": 111,
+        "width": 79,
+        "height": 83
+      }
+    },
+    {
+      "id": 3,
+      "name": "Smokey in Pic3",
+      "image": "pic3.png",
+      "clickRegion": {
+        "x": 68,
+        "y": 124,
+        "width": 71,
+        "height": 64
+      }
+    },
+    {
+      "id": 4,
+      "name": "Smokey with the Lady",
+      "image": "pic4.png",
+      "clickRegion": {
+        "x": 914,
+        "y": 395,
+        "width": 30,
+        "height": 37
+      }
+    },
+    {
+      "id": 5,
+      "name": "Smokey Ridealong",
+      "image": "pic5.png",
+      "clickRegion": {
+        "x": 152,
+        "y": 118,
+        "width": 76,
+        "height": 83
+      }
+    },
+    {
+      "id": 6,
+      "name": "Smokey Meets God",
+      "image": "pic6.png",
+      "clickRegion": {
+        "x": 884,
+        "y": 173,
+        "width": 35,
+        "height": 53
+      }
+    },
+    {
+      "id": 7,
+      "name": "Smokey Meets God 2",
+      "image": "pic7.png",
+      "clickRegion": {
+        "x": 375,
+        "y": 496,
+        "width": 51,
+        "height": 56
+      }
+    },
+    {
+      "id": 8,
+      "name": "Smokey In the Village",
+      "image": "pic8.png",
+      "clickRegion": {
+        "x": 1104,
+        "y": 449,
+        "width": 51,
+        "height": 60
+      }
+    },
+    {
+      "id": 9,
+      "name": "Smokey In The Square",
+      "image": "pic9.png",
+      "clickRegion": {
+        "x": 1212,
+        "y": 86,
+        "width": 35,
+        "height": 41
+      }
+    },
+    {
+      "id": 10,
+      "name": "Smokey In the Barnyard",
+      "image": "pic10.jpeg",
+      "clickRegion": {
+        "x": 3052,
+        "y": 331,
+        "width": 315,
+        "height": 255
+      }
+    },
+    {
+      "id": 11,
+      "name": "The Garden Of Smokely Delight",
+      "image": "pic11.png",
+      "clickRegion": {
+        "x": 1122,
+        "y": 261,
+        "width": 57,
+        "height": 60
+      }
+    }
+  ]
 }
