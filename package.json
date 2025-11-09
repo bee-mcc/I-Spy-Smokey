@@ -7,7 +7,7 @@
         "start": "http-server -p 3000 -c-1",
         "editor": "http-server -p 3001 -c-1 -o editor.html",
         "dev": "npm run start",
-        "build": "echo 'No build process needed for static files'",
+        "build": "node scripts/build.js",
         "test": "echo 'No tests specified'"
     },
     "keywords": [
