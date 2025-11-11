@@ -648,30 +648,7 @@ class Game {
 
     // Handle long press
     handleLongPress(mouseX, mouseY) {
-        if (this.state !== 'playing' || !this.currentLevel) return;
-        if (this.timerPaused || this.countdownActive) return; // Don't register clicks during pause/countdown
-
-        // Start timer on first interaction (should already be started after countdown, but keep for safety)
-        this.resumeTimer(true);
-
-        // Track total clicks
-        this.totalClicks++;
-
-        // Handle level click
-        const isCorrect = this.currentLevel.handleClick(mouseX, mouseY);
-
-        if (isCorrect) {
-            this.correctClicks++;
-            this.pauseTimer();
-            // Move to next level after a short delay
-            setTimeout(() => {
-                this.nextLevel();
-            }, 1000);
-        } else {
-            // Add penalty for wrong click
-            this.penaltyTime += this.penaltyPerClick;
-            this.showPenaltyNotification();
-        }
+        this.processClick(mouseX, mouseY);
     }
 
     // Cancel long press timer
@@ -685,10 +662,15 @@ class Game {
 
     // Handle regular click (for non-touch devices)
     handleClick(mouseX, mouseY) {
+        this.processClick(mouseX, mouseY);
+    }
+
+    // Process a click at the given coordinates (shared logic for both click and long press)
+    processClick(mouseX, mouseY) {
         if (this.state !== 'playing' || !this.currentLevel) return;
         if (this.timerPaused || this.countdownActive) return; // Don't register clicks during pause/countdown
 
-        // Start timer on first click (should already be started after countdown, but keep for safety)
+        // Start timer on first interaction (should already be started after countdown, but keep for safety)
         this.resumeTimer(true);
 
         // Track total clicks
