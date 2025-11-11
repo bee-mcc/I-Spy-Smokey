@@ -92,12 +92,18 @@ class Game {
         this.state = 'loading'; // loading, playing, completed
         this.levels = [];
         this.currentLevelIndex = 0;
-        this.startTime = 0;
+
+        // Timer system - uses accumulated elapsed time approach
+        this.elapsedTime = 0; // Accumulated time while timer is running
+        this.lastResumeTime = 0; // When timer was last resumed
         this.totalTime = 0;
         this.timer = 0;
-        this.levelStartTime = 0; // Time when current level started
+        this.levelElapsedTime = 0; // Accumulated time for current level
+        this.levelLastResumeTime = 0; // When level timer was last resumed
         this.levelTimer = 0; // Time spent on current level
         this.timerStarted = false;
+        this.timerPaused = true;
+
         this.canvasWidth = 800;
         this.canvasHeight = 600;
 
@@ -130,7 +136,6 @@ class Game {
         // Level start screen
         this.levelStartShown = false;
         this.countdownActive = false;
-        this.timerPaused = true;
         this.renderEnabled = false;
 
         // Color palettes for level start screens
@@ -224,6 +229,41 @@ class Game {
         }
     }
 
+    pauseTimer() {
+        if (!this.timerPaused && this.timerStarted) {
+            // Accumulate elapsed time before pausing
+            const now = millis();
+            this.elapsedTime += now - this.lastResumeTime;
+            if (this.levelLastResumeTime > 0) {
+                this.levelElapsedTime += now - this.levelLastResumeTime;
+            }
+        }
+        this.timerPaused = true;
+    }
+
+    resumeTimer(allowStart = false) {
+        const now = millis();
+
+        if (this.timerPaused) {
+            if (this.timerStarted) {
+                // Resume from pause - just record the resume time
+                this.lastResumeTime = now;
+                if (this.levelLastResumeTime > 0) {
+                    this.levelLastResumeTime = now;
+                }
+            } else if (allowStart) {
+                // Start timer for the first time
+                this.timerStarted = true;
+                this.lastResumeTime = now;
+            }
+            this.timerPaused = false;
+        } else if (!this.timerStarted && allowStart) {
+            // Start timer if not already started
+            this.timerStarted = true;
+            this.lastResumeTime = now;
+        }
+    }
+
     // Show game UI
     showGameUI() {
         const gameUI = document.getElementById('game-ui');
@@ -274,7 +314,7 @@ class Game {
         // Show the screen
         levelStartScreen.style.display = 'flex';
         this.levelStartShown = true;
-        this.timerPaused = true;
+        this.pauseTimer();
 
         // Hide floating timer
         const floatingTimer = document.getElementById('floating-timer');
@@ -425,21 +465,7 @@ class Game {
                     countdownOverlay.style.display = 'none';
                     this.countdownActive = false;
                     this.setRenderEnabled(true);
-
-                    // Start timer if not already started (set startTime based on elapsed)
-                    if (!this.timerStarted) {
-                        this.startTime = millis();
-                        this.timerStarted = true;
-                    }
-
-                    // Start level timer
-                    this.levelStartTime = millis();
-                    this.levelTimer = 0;
-
-                    // Unpause timer and show floating timer
-                    this.timerPaused = false;
-                    const floatingTimer = document.getElementById('floating-timer');
-                    if (floatingTimer) floatingTimer.style.display = 'block';
+                    // Timer will be resumed in display() when renderEnabled becomes true
                 }, 800);
             }
         }, 1000);
@@ -505,9 +531,11 @@ class Game {
     // Update game state
     update() {
         if (this.state === 'playing' && this.timerStarted && !this.timerPaused) {
-            this.timer = millis() - this.startTime;
-            if (this.levelStartTime > 0) {
-                this.levelTimer = millis() - this.levelStartTime;
+            // Calculate timer as accumulated time + current segment
+            const now = millis();
+            this.timer = this.elapsedTime + (now - this.lastResumeTime);
+            if (this.levelLastResumeTime > 0) {
+                this.levelTimer = this.levelElapsedTime + (now - this.levelLastResumeTime);
             }
             this.updateTimerDisplay();
         }
@@ -516,6 +544,18 @@ class Game {
     // Display current level
     display() {
         if (this.state === 'playing' && this.currentLevel) {
+            // Start the timer when rendering begins (after countdown)
+            if (this.renderEnabled && this.timerPaused) {
+                this.resumeTimer(true);
+                // Start level timer
+                this.levelLastResumeTime = millis();
+                this.levelElapsedTime = 0;
+                this.levelTimer = 0;
+
+                const floatingTimer = document.getElementById('floating-timer');
+                if (floatingTimer) floatingTimer.style.display = 'block';
+            }
+
             if (this.renderEnabled) {
                 this.currentLevel.display();
             }
@@ -612,10 +652,7 @@ class Game {
         if (this.timerPaused || this.countdownActive) return; // Don't register clicks during pause/countdown
 
         // Start timer on first interaction (should already be started after countdown, but keep for safety)
-        if (!this.timerStarted) {
-            this.startTime = millis();
-            this.timerStarted = true;
-        }
+        this.resumeTimer(true);
 
         // Track total clicks
         this.totalClicks++;
@@ -625,6 +662,7 @@ class Game {
 
         if (isCorrect) {
             this.correctClicks++;
+            this.pauseTimer();
             // Move to next level after a short delay
             setTimeout(() => {
                 this.nextLevel();
@@ -651,10 +689,7 @@ class Game {
         if (this.timerPaused || this.countdownActive) return; // Don't register clicks during pause/countdown
 
         // Start timer on first click (should already be started after countdown, but keep for safety)
-        if (!this.timerStarted) {
-            this.startTime = millis();
-            this.timerStarted = true;
-        }
+        this.resumeTimer(true);
 
         // Track total clicks
         this.totalClicks++;
@@ -664,6 +699,7 @@ class Game {
 
         if (isCorrect) {
             this.correctClicks++;
+            this.pauseTimer();
             // Move to next level after a short delay
             setTimeout(() => {
                 this.nextLevel();
@@ -678,8 +714,11 @@ class Game {
     // Move to next level
     async nextLevel() {
         // Pause timer
-        this.timerPaused = true;
-        this.levelStartTime = 0; // Reset level timer
+        this.pauseTimer();
+        // Reset level timer
+        this.levelElapsedTime = 0;
+        this.levelLastResumeTime = 0;
+        this.levelTimer = 0;
 
         // Hide floating timer
         const floatingTimer = document.getElementById('floating-timer');
@@ -704,6 +743,7 @@ class Game {
     // Complete the game
     completeGame() {
         this.state = 'completed';
+        this.pauseTimer();
         this.totalTime = this.timer + this.penaltyTime;
         this.startCelebrationEffect();
         this.showGameCompleteModal();
@@ -819,13 +859,18 @@ class Game {
     restartGame() {
         this.closeModal();
         this.currentLevelIndex = 0;
-        this.startTime = 0;
+
+        // Reset timer system
+        this.elapsedTime = 0;
+        this.lastResumeTime = 0;
         this.totalTime = 0;
         this.timer = 0;
-        this.levelStartTime = 0;
+        this.levelElapsedTime = 0;
+        this.levelLastResumeTime = 0;
         this.levelTimer = 0;
         this.timerStarted = false;
         this.timerPaused = true;
+
         this.penaltyTime = 0;
         this.totalClicks = 0;
         this.correctClicks = 0;
