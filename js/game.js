@@ -390,8 +390,15 @@ class Game {
         const newButton = goButton.cloneNode(true);
         goButton.parentNode.replaceChild(newButton, goButton);
 
-        // Add click handler
+        // Add click handler for desktop
         newButton.addEventListener('click', () => {
+            this.startCountdown();
+        });
+
+        // Add touch handler for mobile
+        newButton.addEventListener('touchend', (e) => {
+            e.preventDefault(); // Prevent the click event from also firing
+            e.stopPropagation(); // Stop the event from reaching p5.js touch handlers
             this.startCountdown();
         });
     }
@@ -802,14 +809,29 @@ class Game {
 
         if (playAgainBtn) {
             playAgainBtn.onclick = () => this.restartGame();
+            playAgainBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.restartGame();
+            });
         }
 
         if (closeBtn) {
             closeBtn.onclick = () => this.closeModal();
+            closeBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeModal();
+            });
         }
 
         if (saveScoreBtn) {
             saveScoreBtn.onclick = () => this.saveScore();
+            saveScoreBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.saveScore();
+            });
         }
 
         if (nameInput) {
